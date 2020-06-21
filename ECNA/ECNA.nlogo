@@ -121,12 +121,12 @@ to runECNA
     ]
   ]
 
-;  ;; estimating ticks equivalent of number of infections in 10 years (say 2010 and 2015) assuming 50000 new infections per year
-;  ;; trans-year will then use persons infected  in 10 years
-;  if (found = false and count infecteds > (1 - (50000 * 10) / 1100000) * termination-node)[
-;    set trans-year-threshold floor ((ticks + 1) / time-unit) / 2
-;    set found true
-;  ]
+  ;  ;; estimating ticks equivalent of number of infections in 10 years (say 2010 and 2015) assuming 50000 new infections per year
+  ;  ;; trans-year will then use persons infected  in 10 years
+  ;  if (found = false and count infecteds > (1 - (50000 * 10) / 1100000) * termination-node)[
+  ;    set trans-year-threshold floor ((ticks + 1) / time-unit) / 2
+  ;    set found true
+  ;  ]
   goECNA
   repeat 10 [layout-ECNA]
   ;]
@@ -729,8 +729,9 @@ to-report variance-degree-susc
 end
 
 to layout-ECNA
-  ;; the number 3 here is arbitrary; more repetitions slows down the
-  ;; model, but too few gives poor layouts
+  ; Some computational aspects of this layout function adopted from Netlogo Model Library codes:
+  ; Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
   let agentset (turtle-set infecteds susceptibles)
   ;let agentset (turtle-set turtles)
   ask susceptibles [ifelse count my-links < 1 [set color black][set color green] set shape "circle" set size 0.5]
