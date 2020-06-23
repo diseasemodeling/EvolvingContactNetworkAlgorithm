@@ -12,12 +12,10 @@ breed [non-agent-susceptibles NAsusceptible]
 undirected-link-breed [ECNA-links ECNA-link]
 
 turtles-own [
-  degree ;Degree or number of contacts, num-IDU-partner
+  degree ;Curent degree or number of contacts
+  desired-degree; actual degree  (for infected desired-degree = degree )
   clustering ;Clustering coefficient
   number-exposures ;Number exposures at a time step, IDU-acts-monthly-counter
-  time-in-simulation ;Time turtles has been in the simulation
-  desired-degree
-  stage ;will get rid of the need for turtles with different breeds
   time-of-infection
   time-of-diagnosis
   source-of-infection
@@ -25,15 +23,13 @@ turtles-own [
 ]
 infecteds-own [
   aware? ;Boolean, Is agents aware of their HIV positive status, aware?
-  time-discovered ;How long for agent to become diagnosed, age-Diag
+         ;time-discovered ;How long for agent to become diagnosed, age-Diag
   time-infected ;At what point did the agent become infected, age-at-infection
 
   degree ;Degree or number of contacts, num-IDU-partner
   clustering ;Clustering coefficient
   number-exposures ;Number exposures at a time step, IDU-acts-monthly-counter
-  time-in-simulation ;Time turtles has been in the simulation
   desired-degree
-  stage ;will get rid of the need for turtles with different breeds
   time-of-infection
   time-of-diagnosis
   source-of-infection
@@ -45,14 +41,11 @@ susceptibles-own [
   eligible? ;Boolean, Is this susceptible agent an eligible contact for all newly-infected turtle
   used? ;Boolean, Is this susceptible agent used in ERGM
   contacts? ;Does not influence results, measures the number of agents that could possibly get infected at a time-step
-  pot-triad? ;Delete, True if a newly infected agents could create a triad with this susceptible contact
-
   degree ;Degree or number of contacts, num-IDU-partner
   clustering ;Clustering coefficient
   number-exposures ;Number exposures at a time step, IDU-acts-monthly-counter
-  time-in-simulation ;Time turtles has been in the simulation
   desired-degree
-  stage ;will get rid of the need for turtles with different breeds
+
   time-of-infection
   time-of-diagnosis
   source-of-infection
@@ -67,6 +60,7 @@ globals [
   termination-node
   TimeToDiagnosis
   ;;scale-free distribution parameters
+  lambda
   degree-dist
   degree-dist-Bin
   degree-dist-all
@@ -90,7 +84,7 @@ globals [
   b2 ;For NN
   min_scale ;For NN
   max_scale ;For NN
-  hidden_layer
+  hidden_layer ;For NN
   input
   max_degree
   avg_degree
@@ -99,37 +93,25 @@ globals [
   check_output
 
 ]
-
-to testECNA
+to clear
+  clear-all
   file-close-all
-  ; carefully [file-delete "TransmissionClusters.csv"] []
-  ; write-cluster-statistics-header
-  ;  carefully [file-delete "TransmissionClustersShort.csv"] []
-  ;  write-cluster-header-Short
-  set TimeToDiagnosis 10; upper bound for diagnosis in years
+end
+
+to setup
+  file-close-all
   setup-ECNA-globals
   setupECNA
-  ;runECNA
-  ; reportECNA
-  ;  runClusterCodes
-end
-to runECNA
-  let found false
 
+end
+
+to runECNA
   if count non-agent-susceptibles < 1000 [
     create-non-agent-susceptibles (termination-node * 2)[
     ]
   ]
-
-  ;  ;; estimating ticks equivalent of number of infections in 10 years (say 2010 and 2015) assuming 50000 new infections per year
-  ;  ;; trans-year will then use persons infected  in 10 years
-  ;  if (found = false and count infecteds > (1 - (50000 * 10) / 1100000) * termination-node)[
-  ;    set trans-year-threshold floor ((ticks + 1) / time-unit) / 2
-  ;    set found true
-  ;  ]
   goECNA
   repeat 10 [layout-ECNA]
-  ;]
 
 end
 
@@ -138,29 +120,22 @@ to setup-ECNA-globals
   set termination-node maxDegree * initial-infected * 10 ;500
   set exposures-per-month 100 / 12
 
-
+  set lambda 2.1 ; this is the power-law exponent - if changing lambda also change degree-dist-all to match the exponent
   set degree-dist-all matrix:from-row-list [[0 0.214958105	0.154960174	0.213820213	0.175235337	0.126409434	0.072204407	0.030412744	0.011999586]]
   set degree-dist-Bin-all [0 1	2	4	8	16	32	64	128]; degree in each bin
   set degree-dist matrix:make-constant 1 length(degree-dist-Bin-all) 0
-  normalizeDegreeDist 0
-
-
+  normalizeDegreeDist 0 ; only one risk group; can loop
   set susceptible-degree-dist matrix:times-scalar degree-dist pop-size ;; determine number of persons in each bin
   let i 0
   while [i < length degree-dist-Bin][
     matrix:set susceptible-degree-dist 0 i round (matrix:get susceptible-degree-dist 0 i)
     set i i + 1
   ]
-
 end
 
-to clear
-  clear-all
-  file-close-all
-end
 
-to normalizeDegreeDist [sexInd]
-  ;;NORMALIZE DEGREE DIST TO MAX DEGREE BINS (make it sum to 1)
+to normalizeDegreeDist [sexInd]; ; currently only one risk group; if need more risk group can expand to send different value of sexInd: eg., Heterosexual female, hetrosexual male, MSM, IDU are relevant risk groups for HIV
+                               ;;NORMALIZE DEGREE DIST TO MAX DEGREE BINS (make it sum to 1)
   matrix:set-row degree-dist sexInd matrix:get-row degree-dist-all sexInd
   set degree-dist-Bin degree-dist-Bin-all
   let totalBins round(ln maxDegree / ln 2)
@@ -171,7 +146,6 @@ to normalizeDegreeDist [sexInd]
     set degree-dist-Bin remove-item (length(degree-dist-Bin) - 1)  degree-dist-Bin
     set i i + 1
   ]
-
   set i 0
   let denominator 0
   repeat totalBins + 2[
@@ -183,11 +157,11 @@ to normalizeDegreeDist [sexInd]
   set temp-row matrix:from-row-list temp-row ;matrix
   set temp-row matrix:times-scalar temp-row (1 / denominator) ;matrix
   matrix:set-row degree-dist sexInd matrix:get-row temp-row 0
-
 end
-to get-mats
-  ;let Scale-Free-Distribution csv:from-file "simulated_scale_free_dist_m5.csv" ;Theoretical scale-free distribution
-  ;set SF-Distribution matrix:from-row-list Scale-Free-Distribution ;Distribution as a matrix
+
+to get-mats; Read in neural network weights
+           ;let Scale-Free-Distribution csv:from-file "simulated_scale_free_dist_m5.csv" ;Theoretical scale-free distribution
+           ;set SF-Distribution matrix:from-row-list Scale-Free-Distribution ;Distribution as a matrix
 
   let w1 csv:from-file "/Neural Network Weights/w_pref_attach_l.csv"
   set w matrix:from-row-list w1
@@ -299,9 +273,7 @@ to setupECNA
     set shape "circle"
     set time-infected -1
     set aware? false
-    set time-discovered random 100
     set desired-degree return-random-degree
-    ;  set desired-degree random (item random  (item random length degree-list degree-list);file-read
     setxy random-xcor random-ycor
     set partners-per-month round (desired-degree / 12)
     if partners-per-month < 1 [set partners-per-month 1]
@@ -314,6 +286,72 @@ to setupECNA
   check-degree
   set max_degree last degree-dist-Bin
 
+end
+
+to goECNA
+  tick
+
+  ask susceptibles [set contacts? false]
+  infect-population-modified ;Determines if a susceptible agent will become infected
+  calc-prop-infected
+  determine-non-eligible-modified ;Determines which susceptible agents are not eligible to be linked with newly infected agents
+  check-degree ;Calculates each turltes degree
+  calc-avg-inf-degree ;Calculates average degree of newly infected agents
+
+  ;;;; use below if needed for  additonal disease festures and statistics needed
+  ;check-cluster ;Calculates each turtles clustering coefficient
+  ;determine-num-exposures ;Add procedure if needed : to determines the number of exposures per time step for all agents
+  ;age-reset ;Updates turtles-own variables and global variables
+  ;reset ;Updates values
+  ;check-awareness ;Add procedure if needed : to check the healthcare statues of all infected agents
+
+
+
+  ;;;; use below if needed for  addiitonal stoppng condition- stop if no susceptibles are exposed
+  ;if (count infecteds >= (initial-infected + initial-susceptibles - 1) or num-exposed-sus = 0) [stop]
+  set num-exposed-sus 0
+  ask infecteds[
+    let sus-link link-neighbors with [breed = susceptibles]
+    ask sus-link
+    [set contacts? true]
+  ]
+  set num-exposed-sus count susceptibles with [contacts? = true]; track number of susceptibles who are exposed
+
+end
+
+
+to infect-population-modified
+
+  ask infecteds with [count link-neighbors with [breed = susceptibles] > 0][
+    let infected-node who
+    let receiver n-of partners-per-month link-neighbors;Selects a random contact of aware-distributor
+    let exposures-per-partner exposures-per-month / partners-per-month
+    if (receiver != nobody ) [
+      ask receiver[
+        let prob-of-infection 1 - (1 - transmission-rate) ^ (exposures-per-partner) ;Calculates susceptible agents probability of infection
+        let random-float1 random-float 1
+        if (prob-of-infection > random-float1 and breed = susceptibles) [ ;Infects susceptible agents using the binomial distribution
+          set breed  infecteds
+          set time-of-infection ticks
+          set source-of-infection infected-node
+          set color red
+          set size 0.5
+          set shape "circle"
+          set time-infected -1
+          set partners-per-month round (desired-degree / 12)
+          if partners-per-month < 1 [set partners-per-month 1]
+
+
+        ]
+      ]
+    ]
+  ]
+
+end
+
+to calc-prop-infected
+  let num-inf count infecteds
+  set proportion_infected (num-inf / pop-size) * 100
 end
 
 to check-degree ;Calculates the degree of each individual turtle
@@ -345,130 +383,6 @@ to check-cluster ;Calculates the clustering-coefficient of each individual turtl
     set clustering clustering-coef
   ]
 end
-
-to-report binomial [n p] ;Give a number of trials (n) and a probability (p) will compute an integer using a binomial distribution
-  let bin_ct 0 ;Initializing counting variable
-  repeat n [
-    if random-float 1 < p
-      [set bin_ct bin_ct + 1]
-  ]
-  report bin_ct
-end
-to writeECNA
-
-  ask turtles with [breed = susceptibles][die]
-
-  let n 0
-  ask turtles with [ breed = susceptibles or breed = infecteds][
-    set ID n
-    set n n + 1
-  ]
-
-  file-open "ECNAdata.csv"
-  ask infecteds[
-    file-write who;ID
-    file-write time-of-infection
-    file-write time-of-diagnosis
-    let source 0
-    let source-inf-ID source-of-infection
-    ask infecteds with [who = source-inf-ID]
-    [set source ID]
-    file-write source
-    file-print ""
-  ]
-  file-close
-
-end
-
-to goECNA
-  tick
-
-  ;if (count infecteds >= (initial-infected + initial-susceptibles - 1) or num-exposed-sus = 0) [stop]
-  ;if (ticks >= termination-ticks) [
-
-  ask susceptibles [set contacts? false]
-  ; determine-num-exposures ;Determines the number of exposures per time step for all agents
-  infect-population-modified ;Determines if a susceptible agent will become infected
-  calc-prop-infected
-  determine-non-eligible-modified ;Determines which susceptible agents are not eligible to be linked with newly infected agents
-  check-degree ;Calculates each turltes degree
-               ;check-cluster ;Calculates each turtles clustering coefficient
-  calc-avg-inf-degree ;Calculates average degree of newly infected agents
-                      ; age-reset ;Updates turtles-own variables and global variables
-                      ;reset ;Updates values
-  check-awareness ;Checked the healthcare statues of all infected agents
-
-
-  set num-exposed-sus 0
-  ask infecteds[
-    let sus-link link-neighbors with [breed = susceptibles]
-    ask sus-link
-    [set contacts? true]
-  ]
-  set num-exposed-sus count susceptibles with [contacts? = true]
-
-end
-
-
-to infect-population-modified
-
-  ask infecteds with [count link-neighbors with [breed = susceptibles] > 0][
-    let infected-node who
-    let receiver n-of partners-per-month link-neighbors;Selects a random contact of aware-distributor
-    let exposures-per-partner exposures-per-month / partners-per-month
-    if (receiver != nobody ) [
-      ask receiver[
-        let prob-of-infection 1 - (1 - transmission-rate) ^ (exposures-per-partner) ;Calculates susceptible agents probability of infection
-        let random-float1 random-float 1
-        if (prob-of-infection > random-float1 and breed = susceptibles) [ ;Infects susceptible agents using the binomial distribution
-          set breed  infecteds
-          set time-of-infection ticks
-          set source-of-infection infected-node
-          let rand random-float 1
-
-          ifelse rand < 0.25[;<0.7 years
-            set time-of-diagnosis round(ticks + random (0.7 * time-unit));TimeToDiagnosis
-          ]
-          [ifelse rand < 0.5[;0.7 to 3 years
-            set time-of-diagnosis round(ticks + 0.7 * time-unit + random (3 * time-unit - 0.7 * time-unit)); TimeToDiagnosis
-            ]
-            [
-              ifelse rand < 0.75[; 3 to 7.8 years
-                set time-of-diagnosis round(ticks + 3 * time-unit + random (7.8 * time-unit - 3 * time-unit));TimeToDiagnosis
-              ]
-              [;7.8 to TimeToDiagnosis
-                set time-of-diagnosis round(ticks + 7.8 * time-unit + random (TimeToDiagnosis * time-unit - 7.8 * time-unit));
-              ]
-
-            ]
-          ]
-
-
-          set color red
-          set size 0.5
-          set shape "circle"
-          set time-infected -1
-          set aware? false
-          set time-discovered random 100
-
-
-          set partners-per-month round (desired-degree / 12)
-          if partners-per-month < 1 [set partners-per-month 1]
-
-
-        ]
-      ]
-    ]
-  ]
-
-end
-
-to calc-prop-infected
-  let num-inf count infecteds
-  set proportion_infected (num-inf / pop-size) * 100
-end
-
-
 to determine-non-eligible-modified
 
   ask infecteds with [time-infected = -1 and desired-degree > 0] [ ;Susceptibles of the infected contacts of the newly infected agents are not eligible contacts
@@ -509,7 +423,7 @@ to determine-non-eligible-modified
 
               set color green
               set size 0.5
-              set time-in-simulation 0
+
             ]
 
           ]
@@ -528,7 +442,7 @@ to determine-non-eligible-modified
 
 end
 
-to-report desired-neighbor-degree-calc [output_vector lb hb]
+to-report desired-neighbor-degree-calc [output_vector lb hb];; ECNA
   let i 0
   let val random-float 1
   set desired-neighbor-degree 0
@@ -546,7 +460,7 @@ to-report desired-neighbor-degree-calc [output_vector lb hb]
   report desired-neighbor-degree
 end
 
-to-report calculate-dist-NN [node_degree maximum_degree network_lambda network_degree prop_inf maximum_scale minimum_scale] ; cluster_coef
+to-report calculate-dist-NN [node_degree maximum_degree network_lambda network_degree prop_inf maximum_scale minimum_scale] ;read from Neural network model
   let output matrix:make-constant 1 max_degree matrix:get b2 0 0
 
   let j 0
@@ -655,14 +569,6 @@ to-report avg-inf-degree1 ;Reports the average degree of newly infected agents, 
 end
 
 
-to check-awareness ;Update healthcare status
-  ask infecteds [
-    if aware? = false and time-of-diagnosis > ticks[
-      set aware? true
-    ]
-  ]
-end
-
 to kill-not-needed-links ;Kills links attached to agents with no infected contacts
   ask susceptibles[
     let my-contacts link-neighbors
@@ -673,22 +579,12 @@ to kill-not-needed-links ;Kills links attached to agents with no infected contac
       ]
     ]
   ]
-
 end
 
 to-report global-clustering-coefficient ;Calculate global clustering coefficient
   let closed-triplets sum [ nw:clustering-coefficient * count my-links * (count my-links - 1) ] of turtles
   let triplets sum [ count my-links * (count my-links - 1) ] of turtles
   report closed-triplets / triplets
-end
-
-to-report infected-clustering-coefficient
-  let sum-cc 0
-  ask infecteds[
-    set sum-cc sum-cc + clustering
-  ]
-
-  report sum-cc / (count infecteds)
 end
 
 to-report global-degree ;Calculate average global degree
@@ -699,13 +595,24 @@ to-report global-degree ;Calculate average global degree
   report (total-links) / total-turtles
 end
 
+
+;;;;;PROCEDURES BELOW THIS ARE NOT CALLED BUT USEFUL FOR ADDITIONAL STATISTICS;; use as needed
+
+;;; 1. useful statistics
+to-report infected-clustering-coefficient
+  let sum-cc 0
+  ask infecteds[
+    set sum-cc sum-cc + clustering
+  ]
+
+  report sum-cc / (count infecteds)
+end
+
 to-report network-avg-degree
   let total-links sum [degree] of turtles
   let total-turtles count turtles
   report total-links / total-turtles
 end
-
-
 
 to-report median-degree
   let med-degree median [degree] of infecteds
@@ -728,6 +635,75 @@ to-report variance-degree-susc
   report var-degree
 end
 
+to-report binomial [n p] ;Give a number of trials (n) and a probability (p) will compute an integer using a binomial distribution
+  let bin_ct 0 ;Initializing counting variable
+  repeat n [
+    if random-float 1 < p
+      [set bin_ct bin_ct + 1]
+  ]
+  report bin_ct
+end
+
+;;2. Useful for additonal disease progression and care modeling
+
+to check-awareness ;Update healthcare status
+  ask infecteds [
+    if aware? = false and time-of-diagnosis > ticks[
+      set aware? true
+    ]
+  ]
+end
+
+to diagnosisFeatures  ;Add time at whihc new infected node may beocme diagnosed
+  let rand random-float 1
+  ifelse rand < 0.25[;<0.7 years
+    set time-of-diagnosis round(ticks + random (0.7 * time-unit));TimeToDiagnosis
+  ]
+  [ifelse rand < 0.5[;0.7 to 3 years
+    set time-of-diagnosis round(ticks + 0.7 * time-unit + random (3 * time-unit - 0.7 * time-unit)); TimeToDiagnosis
+    ]
+    [
+      ifelse rand < 0.75[; 3 to 7.8 years
+        set time-of-diagnosis round(ticks + 3 * time-unit + random (7.8 * time-unit - 3 * time-unit));TimeToDiagnosis
+      ]
+      [;7.8 to TimeToDiagnosis
+        set time-of-diagnosis round(ticks + 7.8 * time-unit + random (TimeToDiagnosis * time-unit - 7.8 * time-unit));
+      ]
+
+    ]
+  ]
+end
+
+;;;3. Useful write output functions for  additional data analyses
+
+to writeECNA; not called
+
+  ask turtles with [breed = susceptibles][die]
+
+  let n 0
+  ask turtles with [ breed = susceptibles or breed = infecteds][
+    set ID n
+    set n n + 1
+  ]
+
+  file-open "ECNAdata.csv"
+  ask infecteds[
+    file-write who;ID
+    file-write time-of-infection
+    file-write time-of-diagnosis
+    let source 0
+    let source-inf-ID source-of-infection
+    ask infecteds with [who = source-inf-ID]
+    [set source ID]
+    file-write source
+    file-print ""
+  ]
+  file-close
+
+end
+
+
+;;;;;;;;;;;;;;;;CODES FROM OHER SOURCES
 to layout-ECNA
   ; Some computational aspects of this layout function adopted from Netlogo Model Library codes:
   ; Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
@@ -813,7 +789,7 @@ BUTTON
 138
 43
 setup
-testECNA
+setup
 NIL
 1
 T
@@ -873,7 +849,7 @@ PLOT
 23
 1716
 380
-plot 1
+Epidemic features
 NIL
 NIL
 0.0
@@ -885,14 +861,14 @@ true
 "" ""
 PENS
 "Num Infected" 1.0 0 -16777216 true "" "plot count infecteds"
-"Num Susceptible Agents" 1.0 0 -7171555 true "" "plot num-exposed-sus"
+"Num Susceptible Agents Exposed" 1.0 0 -7171555 true "" "plot num-exposed-sus"
 
 PLOT
 1029
 392
 1717
 733
-plot 2
+Network features
 NIL
 NIL
 0.0
@@ -912,17 +888,6 @@ INPUTBOX
 197
 pop-size
 1.0E7
-1
-0
-Number
-
-INPUTBOX
-161
-80
-316
-140
-lambda
-3.0
 1
 0
 Number
