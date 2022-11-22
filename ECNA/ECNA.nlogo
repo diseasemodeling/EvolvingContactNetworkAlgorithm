@@ -718,15 +718,15 @@ to layout-ECNA
     ;; the smaller the inputs to layout-spring we'll need to use
     let factor1 sqrt count agentset
     ;; numbers here are arbitrarily chosen for pleasing appearance
-    layout-spring agentset breed-links (1 / factor1) (7 / factor1) (1 / factor1)
+    layout-spring agentset breed-links (7 / factor1) (7 / factor1) (7 / factor1)
     display  ;; for smooth animation
   ]
   ;; don't bump the edges of the world
   let x-offset max [xcor] of agentset + min [xcor] of agentset
   let y-offset max [ycor] of agentset + min [ycor] of agentset
   ;; big jumps look funny, so only adjust a little each time
-  set x-offset limit-magnitude1 x-offset 0.01
-  set y-offset limit-magnitude1 y-offset 0.01
+  set x-offset limit-magnitude1 x-offset 0.1
+  set y-offset limit-magnitude1 y-offset 0.1
   ask agentset [ setxy (xcor - x-offset / 2) (ycor - y-offset / 2) ]
   ;if count Ptree-links > 0 [ ask Ttree-links [set thickness 0.5]]
   ;  if breed-links = Ptree-links [ ask Ptree-links [set thickness 0.2] ask Ttree-links [set thickness 1]]
@@ -887,7 +887,7 @@ INPUTBOX
 161
 197
 pop-size
-1.0E7
+100.0
 1
 0
 Number
@@ -898,7 +898,7 @@ INPUTBOX
 312
 199
 initial-infected
-5.0
+1.0
 1
 0
 Number
