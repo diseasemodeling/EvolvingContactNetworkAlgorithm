@@ -131,6 +131,8 @@ to setup-ECNA-globals
     matrix:set susceptible-degree-dist 0 i round (matrix:get susceptible-degree-dist 0 i)
     set i i + 1
   ]
+  ask patches [set pcolor white]
+
 end
 
 
@@ -887,7 +889,7 @@ INPUTBOX
 161
 197
 pop-size
-100.0
+10000.0
 1
 0
 Number
@@ -1005,7 +1007,7 @@ ABENM simulates only infected persons and their immediate contacts (infected and
 As new persons become newly infected, the ECNA determines who their immediate contacts are- specifcally, what is the their degree. It then draws a suceptibles persons from the compartmental model corresponding to that speicifc compartment and transitions them to the network as neighbors of the newly infected node. 
 
 ## Software
-A sample computational model to demonstrate ABENM and ECNA is constructed in the Netlogo software (Netlogo software is a free softwrae- it can be downloaded here- https://ccl.northwestern.edu/netlogo/ )
+A sample computational model to demonstrate ABENM and ECNA is constructed in the Netlogo software (Netlogo is a free software- it can be downloaded here- https://ccl.northwestern.edu/netlogo/ )
 
 ## HOW TO USE IT
 A basic understanding of scale-free networks would be necessary to understand the concepts of this work. 
@@ -1019,7 +1021,10 @@ ON the interface, click on the following buttons, in ordee
 
 ## CREDITS AND REFERENCES
 
-Developed by the disease modeling lab for https://blogs.umass.edu/chaitrag/projects/ 
+2021 Eden, M., Castonguay, R., Munkbat, B., Balasubramanian, H., Gopalappa, C., Agent-based evolving network modeling: a new simulation method for modeling low prevalence infectious diseases, Health Care Management Science, 24, 623–639 (2021). https://doi.org/10.1007/s10729-021-09558-0
+
+Developed by the Disease Modeling Lab https://diseasemodeling.github.io/ 
+PI: Chaitra Gopalappa
 Funding: NIH R01AI127236
 @#$#@#$#@
 default
