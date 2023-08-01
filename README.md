@@ -9,6 +9,8 @@ It is developed for simulation of epidemic projections for infectious diseases w
 ABENM simulates only infected persons and their immediate contacts (infected and suceptible) as agents. All other susceptibles are simulated as compartmental modeling, with each compartment representing the degree (log-2 bin) of the nodes. 
 As new persons become newly infected, the ECNA determines who their immediate contacts are- specifcally, what is the their degree. It then draws a suceptibles persons from the compartmental model corresponding to that speicifc compartment and transitions them to the network as neighbors of the newly infected node. 
 
+Related Publication: 2021 Eden, M., Castonguay, R., Munkhbat, B., Balasubramanian, H., Gopalappa, C., Agent-based evolving network modeling: a new simulation method for modeling low prevalence infectious diseases, Health Care Management Science, 24, 623–639 (2021). https://doi.org/10.1007/s10729-021-09558-0 
+
 ## Software
 A sample computational model to demonstrate ABENM and ECNA is constructed in the Netlogo software (Netlogo software is a free softwrae- it can be downloaded here- https://ccl.northwestern.edu/netlogo/ )
 
@@ -23,6 +25,7 @@ ON the interface, click on the following buttons, in ordee
 
 
 ## CREDITS AND REFERENCES
-
-Developed by the disease modeling lab for https://blogs.umass.edu/chaitrag/projects/ 
+2021 Eden, M., Castonguay, R., Munkhbat, B., Balasubramanian, H., Gopalappa, C., Agent-based evolving network modeling: a new simulation method for modeling low prevalence infectious diseases, Health Care Management Science, 24, 623–639 (2021). https://doi.org/10.1007/s10729-021-09558-0  
+Developed by the Disease Modeling Lab https://diseasemodeling.github.io/  
+PI: Chaitra Gopalappa  
 Funding: NIH R01AI127236
